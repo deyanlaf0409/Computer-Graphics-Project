@@ -26,27 +26,27 @@
 
 //puts them in the middle of cell 1,1 facing right
 float playerX = MAP_CELL_SIZE*1.5;
-float playerY = MAP_CELL_SIZE*1.5;
-float playerAngle = 0.0; 
+float playerY = MAP_CELL_SIZE*0.5;
+float playerAngle = 1.5; 
 
 
 
 int map[] = 
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-    ,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1
-    ,1,0,0,0,1,0,0,0,0,0,1,0,0,0,1
-    ,1,0,0,0,1,0,0,0,0,1,1,1,0,0,1
-    ,1,1,0,1,1,1,1,0,0,0,0,0,0,0,1
-    ,1,0,0,0,0,0,1,0,0,0,0,0,0,0,1
-    ,1,0,0,0,0,0,1,1,1,0,0,0,0,0,1
-    ,1,1,1,1,0,0,0,0,1,0,0,1,0,0,1
-    ,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1
+    {0,0,1,1,1,1,1,1,1,1,1,1,1,1,1
     ,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1
-    ,1,0,0,0,0,0,0,0,1,0,0,0,0,0,1
-    ,1,0,0,0,0,0,0,0,1,0,0,1,0,0,1
-    ,1,1,1,1,1,1,1,1,1,0,0,0,0,0,1
-    ,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1
-    ,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+    ,1,0,0,0,1,1,0,1,0,1,1,1,1,1,1
+    ,1,0,1,1,1,0,0,1,0,0,0,0,0,0,1
+    ,1,0,1,0,0,0,1,1,1,1,1,0,1,0,1
+    ,1,0,1,1,1,1,1,0,0,0,1,0,1,0,1
+    ,1,0,0,0,1,0,0,0,1,0,1,1,1,0,1
+    ,1,1,1,0,1,0,1,0,1,0,1,0,0,0,1
+    ,1,0,0,0,1,0,1,0,1,0,1,0,1,0,1
+    ,1,1,1,0,1,0,1,0,1,0,0,0,1,0,1
+    ,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1
+    ,1,0,1,1,1,0,1,0,0,0,0,0,0,0,1
+    ,1,0,1,0,0,0,1,1,1,0,1,1,1,0,1
+    ,1,0,0,0,1,0,0,1,0,0,1,0,0,0,0
+    ,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0};
 
 
 struct Ray{
@@ -101,6 +101,7 @@ void drawMinimap(){
     }
 
     //draw the player, just a point with a line showing where they're facing
+    /*
     glPointSize(PLAYER_SIZE);
     glColor3f(0,255,0);
 
@@ -113,7 +114,9 @@ void drawMinimap(){
         glVertex2f(playerX,translateY + playerY);
         glVertex2f(playerX + cos(playerAngle)*PLAYER_SIZE*2, translateY +playerY + sin(playerAngle)*PLAYER_SIZE*2);
     glEnd();
+    */
 }
+
 
 
 
@@ -210,7 +213,6 @@ void castRays(){
             }else{//looking down
                 rayY = (((int)playerY)/((int)MAP_CELL_SIZE)*((int)MAP_CELL_SIZE))+MAP_CELL_SIZE;
                 yOffset = MAP_CELL_SIZE;
-                
             }
             rayX = (playerY-rayY)*aTan+playerX;
             xOffset = -yOffset*aTan;
@@ -379,7 +381,6 @@ void init(){
     glClearColor(0,0,0,0);//set bg color to black
     gluOrtho2D(0,WINDOW_WIDTH,WINDOW_HEIGHT,0);//sets x, y co-ords
 }
-
 
 int main(int argc, char** argv){	
     glutInit(&argc, argv);
