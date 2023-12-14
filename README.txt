@@ -1,6 +1,5 @@
 Requirements:
 
-http://www.xmission.com/~nate/glut/glut-3.7.6-bin.zip
 GLUT Libraries and header files are glut32.lib and glut.h
 
 
