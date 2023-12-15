@@ -1,6 +1,6 @@
 Requirements:
 
-GLUT Libraries and header files are glut32.lib and glut.h
+GLUT Libraries and header files
 
 
 Compile(Linux):
