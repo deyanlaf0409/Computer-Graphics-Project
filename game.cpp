@@ -1,5 +1,7 @@
 #include <GL/glut.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <math.h>
 
 #define PI 3.1415926
@@ -11,43 +13,47 @@
 #define WINDOW_HEIGHT 512
 #define WINDOW_WIDTH 1024
 
+#define FOV (PI / 3)  // 60 degrees FOV
+
 #define NUM_OF_RAYS 120
-#define RAY_ANGLE_INC 0.0074533
-#define MAP_SIZE 210//should be a multiple of MAP_ARRAY
+#define RAY_ANGLE_INC (FOV / NUM_OF_RAYS)
+#define MAP_SIZE 225//should be a multiple of MAP_ARRAY
 #define MAP_ARRAY 15//the size of our map in cells, maps always square
-#define MAP_CELL_SIZE   MAP_SIZE/MAP_ARRAY
+#define MAP_CELL_SIZE MAP_SIZE/MAP_ARRAY
 #define PLAYER_SIZE    MAP_CELL_SIZE/3
 #define VIEW_STRIP    WINDOW_WIDTH/NUM_OF_RAYS
 #define TURNING_ANGLE 0.07
-#define SPEED    PLAYER_SIZE/3
+#define SPEED    PLAYER_SIZE/7
 
-
-
+#define MOUSE_SENSITIVITY 0.001
 
 //puts them in the middle of cell 1,1 facing right
+
 float playerX = MAP_CELL_SIZE*1.5;
 float playerY = MAP_CELL_SIZE*0.5;
-float playerAngle = 1.5; 
 
+float playerAngle = 1.5;
+
+int keyStates[256] = {0};
 
 
 int map[] = 
-    {0,0,1,1,1,1,1,1,1,1,1,1,1,1,1
-    ,1,0,1,0,0,0,0,0,0,0,0,0,0,0,1
-    ,1,0,0,0,1,1,0,1,0,1,1,1,1,1,1
-    ,1,0,1,1,1,0,0,1,0,0,0,0,0,0,1
-    ,1,0,1,0,0,0,1,1,1,1,1,0,1,0,1
-    ,1,0,1,1,1,1,1,0,0,0,1,0,1,0,1
-    ,1,0,0,0,1,0,0,0,1,0,1,1,1,0,1
-    ,1,1,1,0,1,0,1,0,1,0,1,0,0,0,1
-    ,1,0,0,0,1,0,1,0,1,0,1,0,1,0,1
-    ,1,1,1,0,1,0,1,0,1,0,0,0,1,0,1
-    ,1,0,0,0,1,0,1,0,1,1,1,1,1,1,1
-    ,1,0,1,1,1,0,1,0,0,0,0,0,0,0,1
-    ,1,0,1,0,0,0,1,1,1,0,1,1,1,0,1
-    ,1,0,0,0,1,0,0,1,0,0,1,0,0,0,0
-    ,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0};
-
+    {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+     1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1,
+     1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
+     1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1,
+     1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1,
+     1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1,
+     1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1,
+     1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
+     1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1,
+     1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1,
+     1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
+     1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1,
+     1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
+     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0};
+     
 
 struct Ray{
     float distance;
@@ -57,8 +63,6 @@ struct Ray{
 };
 
 Ray rays[NUM_OF_RAYS];
-
-
 
 
 void drawMinimap(){
@@ -100,21 +104,15 @@ void drawMinimap(){
 
     }
 
-    //draw the player, just a point with a line showing where they're facing
-    /*
+
+    
     glPointSize(PLAYER_SIZE);
     glColor3f(0,255,0);
 
     glBegin(GL_POINTS);
         glVertex2f(playerX, translateY + playerY);
     glEnd();
-
-    glLineWidth(1);
-    glBegin(GL_LINES);
-        glVertex2f(playerX,translateY + playerY);
-        glVertex2f(playerX + cos(playerAngle)*PLAYER_SIZE*2, translateY +playerY + sin(playerAngle)*PLAYER_SIZE*2);
-    glEnd();
-    */
+    
 }
 
 
@@ -187,7 +185,8 @@ void castRays(){
     int mapX, mapY,mapIndex, hWallType, vWallType;
     int depth, maxDepth=MAP_ARRAY; //how many times we loop before giving up
 
-    float rayAngle = playerAngle-NUM_OF_RAYS/2*RAY_ANGLE_INC;
+    float rayAngle = playerAngle - FOV / 2;
+
     if(rayAngle<0){//constrain angle
             rayAngle += 2*PI;
     }else if(rayAngle > 2*PI){
@@ -310,76 +309,121 @@ void castRays(){
 //TODO collision detection
 //tank controls
 //not sure why we need int x and y as args
-void buttons(unsigned char key, int x, int y){
+void updateMovement() {
+    float nextX_w, nextY_w, nextX_s, nextY_s, nextX_a, nextY_a, nextX_d, nextY_d;
+    int nextMapIndex_w, nextMapIndex_s, nextMapIndex_a, nextMapIndex_d;
 
-    float nextX_w, nextY_w, nextX_s, nextY_s;
-    int nextMapIndex_w, nextMapIndex_s;
-    
-    switch(key){
-        case 'w':
-            // Calculate the next position
-            nextX_w = playerX + cos(playerAngle) * SPEED;
-            nextY_w = playerY + sin(playerAngle) * SPEED;
-
-            // Check if the next position is within the map boundaries and not colliding with a wall
-            nextMapIndex_w = ((int)nextY_w / ((int)MAP_CELL_SIZE)) * MAP_ARRAY + ((int)nextX_w / ((int)MAP_CELL_SIZE));
-            if (nextMapIndex_w >= 0 && nextMapIndex_w < MAP_ARRAY * MAP_ARRAY && map[nextMapIndex_w] == 0) {
-                // Update the player's position
-                playerX = nextX_w;
-                playerY = nextY_w;
-            }
-            break;
-
-        case 's':
-            // Calculate the next position
-            nextX_s = playerX - cos(playerAngle) * SPEED;
-            nextY_s = playerY - sin(playerAngle) * SPEED;
-
-            // Check if the next position is within the map boundaries and not colliding with a wall
-            nextMapIndex_s = ((int)nextY_s / ((int)MAP_CELL_SIZE)) * MAP_ARRAY + ((int)nextX_s / ((int)MAP_CELL_SIZE));
-            if (nextMapIndex_s >= 0 && nextMapIndex_s < MAP_ARRAY * MAP_ARRAY && map[nextMapIndex_s] == 0) {
-                // Update the player's position
-                playerX = nextX_s;
-                playerY = nextY_s;
-            }
-            break;
-        case 'd':
-            playerAngle += TURNING_ANGLE;
-            if(playerAngle >= 2 * PI){ playerAngle = 0; }
-            break;
-        case 'a':
-            playerAngle -= TURNING_ANGLE;
-            if(playerAngle <= 0){ playerAngle = 2 * PI; }
-            break;
-        case 27: // 'esc' key
-            exit(0);
-            break;
+    if (keyStates['w']) { // Move forward
+        nextX_w = playerX + cos(playerAngle) * SPEED;
+        nextY_w = playerY + sin(playerAngle) * SPEED;
+        nextMapIndex_w = ((int)nextY_w / ((int)MAP_CELL_SIZE)) * MAP_ARRAY + ((int)nextX_w / ((int)MAP_CELL_SIZE));
+        if (nextMapIndex_w >= 0 && nextMapIndex_w < MAP_ARRAY * MAP_ARRAY && map[nextMapIndex_w] == 0) {
+            playerX = nextX_w;
+            playerY = nextY_w;  
+        }
+    }
+    if (keyStates['s']) { // Move backward
+        nextX_s = playerX - cos(playerAngle) * SPEED;
+        nextY_s = playerY - sin(playerAngle) * SPEED;
+        nextMapIndex_s = ((int)nextY_s / ((int)MAP_CELL_SIZE)) * MAP_ARRAY + ((int)nextX_s / ((int)MAP_CELL_SIZE));
+        if (nextMapIndex_s >= 0 && nextMapIndex_s < MAP_ARRAY * MAP_ARRAY && map[nextMapIndex_s] == 0) {
+            playerX = nextX_s;
+            playerY = nextY_s;  
+        }
+    }
+    if (keyStates['a']) { // Move left
+        nextX_a = playerX + sin(playerAngle) * SPEED; // Adjusting for left turn
+        nextY_a = playerY - cos(playerAngle) * SPEED; // Adjusting for left turn
+        nextMapIndex_a = ((int)nextY_a / MAP_CELL_SIZE) * MAP_ARRAY + ((int)nextX_a / MAP_CELL_SIZE);
+        nextMapIndex_a = ((int)nextY_a / ((int)MAP_CELL_SIZE)) * MAP_ARRAY + ((int)nextX_a / ((int)MAP_CELL_SIZE));
+        if (nextMapIndex_a >= 0 && nextMapIndex_a < MAP_ARRAY * MAP_ARRAY && map[nextMapIndex_a] == 0) {
+            playerX = nextX_a;
+            playerY = nextY_a;  
+        }
+    }
+    if (keyStates['d']) { // Move right
+        nextX_d = playerX - sin(playerAngle) * SPEED; // Adjusting for right turn
+        nextY_d = playerY + cos(playerAngle) * SPEED; // Adjusting for right turn
+        nextMapIndex_d = ((int)nextY_d / ((int)MAP_CELL_SIZE)) * MAP_ARRAY + ((int)nextX_d / ((int)MAP_CELL_SIZE));
+        if (nextMapIndex_d >= 0 && nextMapIndex_d < MAP_ARRAY * MAP_ARRAY && map[nextMapIndex_d] == 0) {
+            playerX = nextX_d;
+            playerY = nextY_d;  
+        }
     }
     
-    
-    // Refresh the display after each key press
-    glutPostRedisplay();
+    glutPostRedisplay(); // Request a redraw
+}
+
+void buttons(unsigned char key, int x, int y) {
+    keyStates[key] = 1; // Mark the key as pressed
+
+    // Handle any actions that should happen only once (e.g., exit on ESC)
+    if (key == 27) {
+        exit(0);
+    }
+}
+
+void keyUp(unsigned char key, int x, int y) {
+    keyStates[key] = 0; // Mark the key as released
 }
 
 
-void display(){
-    glClear(GL_COLOR_BUFFER_BIT);//not sure
-    glutSwapBuffers();//not sure
-    
+void mouseMotion(int x, int y) {
+    static int lastX = -1;
+    static bool isWarping = false;
+
+    int centerX = glutGet(GLUT_WINDOW_WIDTH) / 2;
+    int centerY = glutGet(GLUT_WINDOW_HEIGHT) / 2;
+
+    // If we're in the middle of a warp, ignore this event
+    if (isWarping) {
+        isWarping = false;  // Reset flag to resume regular motion
+        return;
+    }
+
+    if (lastX == -1) {  
+        lastX = x;  // Initialize lastX to the current x on the first call
+    }
+
+    // Calculate the change in x position
+    int deltaX = x - lastX;
+    playerAngle += deltaX * MOUSE_SENSITIVITY;
+
+    // Warp the pointer to the center to allow for continuous movement
+    isWarping = true;  // Set flag to indicate warping (avoiding looping)
+    glutWarpPointer(centerX, centerY);
+    lastX = centerX;  // Set lastX to center to keep deltaX calculation consistent
+
+    glutPostRedisplay();  // Update the display
+}
+
+
+void display() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw elements
     castRays();
     drawView();
     drawMinimap();
 
-    glFlush();//not sure
+    glutSwapBuffers(); 
 }
 
-
 void init(){
-    glutInitDisplayMode(GLUT_SINGLE);//not sure
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB); 
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutCreateWindow("Dungeon");
-    glClearColor(0,0,0,0);//set bg color to black
-    gluOrtho2D(0,WINDOW_WIDTH,WINDOW_HEIGHT,0);//sets x, y co-ords
+    glClearColor(0, 0, 0, 0); 
+    gluOrtho2D(0, WINDOW_WIDTH, WINDOW_HEIGHT, 0); 
+    glutSetCursor(GLUT_CURSOR_NONE); // Hide the cursor
+    glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2); // Center the cursor
+    glutPassiveMotionFunc(mouseMotion);
+    glutMotionFunc(mouseMotion);
+}
+
+void timer(int value) {
+    updateMovement();  // Update movement on each timer tick
+    glutTimerFunc(16, timer, 0);  // Set the timer to call every 16 ms (60 FPS)
 }
 
 int main(int argc, char** argv){	
@@ -387,6 +431,9 @@ int main(int argc, char** argv){
     init();
     glutDisplayFunc(display);
     glutKeyboardFunc(buttons);
+    glutKeyboardUpFunc(keyUp);  // Register key release handler
+    glutTimerFunc(0, timer, 0); // Start the timer
     glutMainLoop();
     return 0;
 }
+
