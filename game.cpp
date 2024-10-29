@@ -15,7 +15,7 @@
 
 #define FOV (PI / 3)  // 60 degrees FOV
 
-#define NUM_OF_RAYS 120
+#define NUM_OF_RAYS 960 //30 //60 //960 //480 //240 //120
 #define RAY_ANGLE_INC (FOV / NUM_OF_RAYS)
 #define MAP_SIZE 225//should be a multiple of MAP_ARRAY
 #define MAP_ARRAY 15//the size of our map in cells, maps always square
@@ -25,7 +25,7 @@
 #define TURNING_ANGLE 0.07
 #define SPEED    PLAYER_SIZE/7
 
-#define MOUSE_SENSITIVITY 0.001
+#define MOUSE_SENSITIVITY 0.00015
 
 //puts them in the middle of cell 1,1 facing right
 
@@ -128,46 +128,47 @@ void drawView(){
         glVertex2f(0, WINDOW_HEIGHT/2);
         glVertex2f(WINDOW_WIDTH, WINDOW_HEIGHT/2);
         glVertex2f(WINDOW_WIDTH, WINDOW_HEIGHT);
-        glVertex2f(0,WINDOW_HEIGHT);
+        glVertex2f(0, WINDOW_HEIGHT);
     glEnd();
-
 
     //draw each part of the wall
     float lineHeight;
     float fixFishEye;
+    float intensity;
     for(int i=0 ; i<sizeof(rays)/sizeof(Ray) ; i++){
 
-        //no idea how this fixes the distortion
-        fixFishEye = playerAngle-rays[i].angle;
-        if(fixFishEye<0){//constrain angle
-            fixFishEye += 2*PI;
-        }else if(fixFishEye > 2*PI){
-            fixFishEye -= 2*PI;
+        // fix distortion (fish-eye effect)
+        fixFishEye = playerAngle - rays[i].angle;
+        if(fixFishEye < 0){
+            fixFishEye += 2 * PI;
+        }else if(fixFishEye > 2 * PI){
+            fixFishEye -= 2 * PI;
         }
-        rays[i].distance = rays[i].distance*cos(fixFishEye);
+        rays[i].distance = rays[i].distance * cos(fixFishEye);
 
-        //pick a colour
+        intensity = 1.0 / (1.0 + 0.03 * rays[i].distance); // Adjust 0.01 for stronger/weaker effect
+
         switch(rays[i].wallType){
             case 1: 
                 if(rays[i].vertical){
-                    glColor3f(0.6,0.6,0.6);
+                    glColor3f(0.9 * intensity, 0.9 * intensity, 0.9 * intensity);
                 }else{
-                    glColor3f(0.4,0.4,0.4);
+                    glColor3f(0.7 * intensity, 0.7 * intensity, 0.7 * intensity);
                 }
                 break;
         }
 
-
-        //set line height and draw
-        lineHeight = (MAP_CELL_SIZE*WINDOW_HEIGHT)/rays[i].distance;
+        // set line height and draw
+        lineHeight = (MAP_CELL_SIZE * WINDOW_HEIGHT) / rays[i].distance;
         glBegin(GL_QUADS);
-            glVertex2f(i*VIEW_STRIP, WINDOW_HEIGHT/2 - lineHeight/2);
-            glVertex2f((i+1)*VIEW_STRIP, WINDOW_HEIGHT/2 - lineHeight/2);
-            glVertex2f((i+1)*VIEW_STRIP, WINDOW_HEIGHT/2 + lineHeight);
-            glVertex2f(i*VIEW_STRIP, WINDOW_HEIGHT/2 + lineHeight);
+            glVertex2f(i * VIEW_STRIP, WINDOW_HEIGHT/2 - lineHeight/2);
+            glVertex2f((i + 1) * VIEW_STRIP, WINDOW_HEIGHT/2 - lineHeight/2);
+            glVertex2f((i + 1) * VIEW_STRIP, WINDOW_HEIGHT/2 + lineHeight/2);
+            glVertex2f(i * VIEW_STRIP, WINDOW_HEIGHT/2 + lineHeight/2);
         glEnd();
     }
 }
+
 
 
 
@@ -410,7 +411,9 @@ void display() {
 }
 
 void init(){
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB); 
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_MULTISAMPLE);
+    glEnable(GL_MULTISAMPLE);
+
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutCreateWindow("Dungeon");
     glClearColor(0, 0, 0, 0); 
