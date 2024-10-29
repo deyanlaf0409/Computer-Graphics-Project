@@ -1,14 +1,16 @@
 #include <GL/glut.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <math.h>
+#include <ctime>
+#include <algorithm>
+#include <random>
+
 
 #define PI 3.1415926
 #define P2 PI/2
 #define P3 3*PI/2
 //#define DEG 0.0174533
-
 
 #define WINDOW_HEIGHT 512
 #define WINDOW_WIDTH 1024
@@ -19,6 +21,8 @@
 #define RAY_ANGLE_INC (FOV / NUM_OF_RAYS)
 #define MAP_SIZE 225//should be a multiple of MAP_ARRAY
 #define MAP_ARRAY 15//the size of our map in cells, maps always square
+#define MAP_WIDTH 15
+#define MAP_HEIGHT 15
 #define MAP_CELL_SIZE MAP_SIZE/MAP_ARRAY
 #define PLAYER_SIZE    MAP_CELL_SIZE/3
 #define VIEW_STRIP    WINDOW_WIDTH/NUM_OF_RAYS
@@ -37,22 +41,81 @@ float playerAngle = 1.5;
 int keyStates[256] = {0};
 
 
-int map[] = 
-    {0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
-     1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1,
-     1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1,
-     1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1,
-     1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1,
-     1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1,
-     1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1,
-     1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-     1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1,
-     1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1,
-     1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1,
-     1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1,
-     1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0};
+
+int map[MAP_SIZE] = {0};  // Initialize the map array with zeros
+
+
+void initializeMapWithWalls() {
+    for (int i = 0; i < MAP_ARRAY; i++) {
+        for (int j = 0; j < MAP_ARRAY; j++) {
+            map[i * MAP_ARRAY + j] = 1; // Set all cells to walls initially
+        }
+    }
+}
+
+// Recursive function for depth-first search-based maze generation
+void carveMaze(int x, int y) {
+    int directions[4][2] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+    
+    // Random device and generator for shuffling directions
+    std::random_device rd; 
+    std::mt19937 g(rd());    
+    std::shuffle(std::begin(directions), std::end(directions), g); // Add the generator here
+
+    for (int i = 0; i < 4; i++) {
+        int nx = x + directions[i][0] * 2;
+        int ny = y + directions[i][1] * 2;
+
+        // Check boundaries and ensure the next cell is a wall (unvisited)
+        if (nx >= 0 && nx < MAP_ARRAY && ny >= 0 && ny < MAP_ARRAY && map[ny * MAP_ARRAY + nx] == 1) {
+            // Carve path to the next cell
+            map[ny * MAP_ARRAY + nx] = 0; // Mark the next cell as a path
+            map[(y + directions[i][1]) * MAP_ARRAY + (x + directions[i][0])] = 0; // Mark the wall between cells as a path
+            carveMaze(nx, ny);  // Recurse
+        }
+    }
+}
+
+
+
+// Main function to generate the maze
+void generateMaze() {
+    initializeMapWithWalls(); // Initialize map with walls
+
+    // Set the player's starting position in the map to be a path (0)
+    int startX = 1; // Starting cell X coordinate
+    int startY = 1; // Starting cell Y coordinate
+
+    map[0 * MAP_ARRAY] = 0; 
+    map[0 * MAP_ARRAY + 1] = 0; 
+
+    // Carve the maze from the starting position
+    carveMaze(startX, startY); 
+
+    // Ensure the last position of the map is a path (0) with enough space
+    int endX = MAP_ARRAY - 1; // Last column
+    int endY = MAP_ARRAY - 1; // Last row
+
+    // Set the ending cells (14,14) and (13,14) to free
+    map[14 * MAP_ARRAY + 14] = 0; // Set (14,14) to free
+    map[13 * MAP_ARRAY + 14] = 0; // Set (13,14) to free
+
+    // Ensure the last position is a path (0)
+    // Check if end position is valid
+    if (map[endY * MAP_ARRAY + endX] == 1) {
+        map[endY * MAP_ARRAY + endX] = 0; // Mark end cell as path (0)
+    }
+}
+
+
+
+
+void resetMazeAndPlayer() {
+    generateMaze();  // Generate a new maze
+    playerX = MAP_CELL_SIZE * 1.5;  // Reset player X position
+    playerY = MAP_CELL_SIZE * 0.5;  // Reset player Y position
+    playerAngle = 1.5;              // Reset player angle if needed
+}
      
 
 struct Ray{
@@ -352,6 +415,14 @@ void updateMovement() {
         }
     }
     
+    
+    // Check if player reached (14, 14) and reset maze if true
+
+    if (playerX > MAP_CELL_SIZE*14 && playerY > MAP_CELL_SIZE*14) {  
+        resetMazeAndPlayer();  // Generate new maze and reset player position
+    }
+
+    
     glutPostRedisplay(); // Request a redraw
 }
 
@@ -429,9 +500,11 @@ void timer(int value) {
     glutTimerFunc(16, timer, 0);  // Set the timer to call every 16 ms (60 FPS)
 }
 
-int main(int argc, char** argv){	
+int main(int argc, char** argv){
+    srand(static_cast<unsigned>(time(0)));
     glutInit(&argc, argv);
     init();
+    generateMaze();
     glutDisplayFunc(display);
     glutKeyboardFunc(buttons);
     glutKeyboardUpFunc(keyUp);  // Register key release handler
