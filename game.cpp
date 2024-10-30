@@ -21,8 +21,6 @@
 #define RAY_ANGLE_INC (FOV / NUM_OF_RAYS)
 #define MAP_SIZE 225//should be a multiple of MAP_ARRAY
 #define MAP_ARRAY 15//the size of our map in cells, maps always square
-#define MAP_WIDTH 15
-#define MAP_HEIGHT 15
 #define MAP_CELL_SIZE MAP_SIZE/MAP_ARRAY
 #define PLAYER_SIZE    MAP_CELL_SIZE/3
 #define VIEW_STRIP    WINDOW_WIDTH/NUM_OF_RAYS
@@ -209,7 +207,7 @@ void drawView(){
         }
         rays[i].distance = rays[i].distance * cos(fixFishEye);
 
-        intensity = 1.0 / (1.0 + 0.03 * rays[i].distance); // Adjust 0.01 for stronger/weaker effect
+        intensity = 1.0 / (1.0 + 0.02 * rays[i].distance); // Adjust 0.01 for stronger/weaker effect
 
         switch(rays[i].wallType){
             case 1: 
