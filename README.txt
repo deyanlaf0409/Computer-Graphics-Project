@@ -1,6 +1,6 @@
 Requirements:
 
-GLUT Libraries and header files
+GLUT Libraries
 
 
 GL Documentation :
